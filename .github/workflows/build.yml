@@ -1,1 +1,43 @@
+name: Build APK (from zip)
 
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: কোড চেকআউট
+        uses: actions/checkout@v4
+
+      - name: জিপ এক্সট্র্যাক্ট
+        run: unzip -q GunjoronWidgetHub.zip -d src
+
+      - name: JDK 17 সেটআপ
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Android SDK সেটআপ
+        uses: android-actions/setup-android@v3
+
+      - name: Gradle 8.7 সেটআপ
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+
+      - name: Debug APK বিল্ড
+        working-directory: src/GunjoronWidgetHub
+        run: gradle assembleDebug --stacktrace
+
+      - name: APK আপলোড
+        uses: actions/upload-artifact@v4
+        with:
+          name: GunjoronWidgetHub-debug-apk
+          path: src/GunjoronWidgetHub/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
