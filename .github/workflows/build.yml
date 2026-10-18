@@ -13,8 +13,27 @@ jobs:
       - name: কোড চেকআউট
         uses: actions/checkout@v4
 
-      - name: জিপ এক্সট্র্যাক্ট
-        run: unzip -q GunjoronWidgetHub.zip -d src
+      - name: রিপোতে কী কী ফাইল আছে দেখি
+        run: ls -la
+
+      - name: জিপ খুঁজে এক্সট্র্যাক্ট
+        run: |
+          ZIP=$(find . -maxdepth 1 -iname '*.zip' | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "::error::রিপোর root-এ কোনো .zip ফাইল পাওয়া যায়নি। জিপটি আপলোড করুন।"
+            exit 1
+          fi
+          echo "জিপ পাওয়া গেছে: $ZIP"
+          mkdir -p src
+          unzip -q "$ZIP" -d src
+          SETTINGS=$(find src -name 'settings.gradle*' -not -path '*/node_modules/*' | head -n 1)
+          if [ -z "$SETTINGS" ]; then
+            echo "::error::জিপের ভেতরে settings.gradle.kts পাওয়া যায়নি।"
+            exit 1
+          fi
+          PROJECT_DIR=$(dirname "$SETTINGS")
+          echo "প্রজেক্ট ফোল্ডার: $PROJECT_DIR"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
       - name: JDK 17 সেটআপ
         uses: actions/setup-java@v4
@@ -31,13 +50,13 @@ jobs:
           gradle-version: 8.7
 
       - name: Debug APK বিল্ড
-        working-directory: src/GunjoronWidgetHub
+        working-directory: ${{ env.PROJECT_DIR }}
         run: gradle assembleDebug --stacktrace
 
       - name: APK আপলোড
         uses: actions/upload-artifact@v4
         with:
           name: GunjoronWidgetHub-debug-apk
-          path: src/GunjoronWidgetHub/app/build/outputs/apk/debug/*.apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 30
